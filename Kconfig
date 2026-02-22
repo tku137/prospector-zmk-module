@@ -81,3 +81,41 @@ config PROSPECTOR_LAYER_NAME_UPPERCASE
     default y
     help
       When enabled, layer names will be converted to uppercase for display.
+
+config PROSPECTOR_BRIGHTNESS_KEYBOARD_CONTROL
+    bool "Enable keyboard-driven brightness control"
+    default n
+    help
+      When enabled, specific keycodes can increase, decrease, or toggle the
+      display brightness at runtime. The adjustment is applied as a modifier
+      on top of the base brightness (ALS or fixed), so ambient light control
+      continues to work independently.
+
+config PROSPECTOR_BRIGHTNESS_UP_KEYCODE
+    int "Brightness up keycode (HID usage ID)"
+    default 115
+    depends on PROSPECTOR_BRIGHTNESS_KEYBOARD_CONTROL
+    help
+      HID usage ID of the key that increases brightness. Default is F24 (115).
+
+config PROSPECTOR_BRIGHTNESS_DOWN_KEYCODE
+    int "Brightness down keycode (HID usage ID)"
+    default 114
+    depends on PROSPECTOR_BRIGHTNESS_KEYBOARD_CONTROL
+    help
+      HID usage ID of the key that decreases brightness. Default is F23 (114).
+
+config PROSPECTOR_BRIGHTNESS_TOGGLE_KEYCODE
+    int "Brightness toggle keycode (HID usage ID)"
+    default 113
+    depends on PROSPECTOR_BRIGHTNESS_KEYBOARD_CONTROL
+    help
+      HID usage ID of the key that toggles the display on/off. Default is F22 (113).
+
+config PROSPECTOR_BRIGHTNESS_STEP
+    int "Brightness step per keypress (%)"
+    default 10
+    range 1 50
+    depends on PROSPECTOR_BRIGHTNESS_KEYBOARD_CONTROL
+    help
+      How much to increase or decrease brightness per keypress, in percent.
