@@ -8,7 +8,8 @@ config ZMK_DISPLAY_STATUS_SCREEN_CUSTOM
     select LV_COLOR_SCREEN_TRANSP
 
 config ZMK_WPM
-    default y
+    default y if !PROSPECTOR_ENV_SENSOR
+    default n if PROSPECTOR_ENV_SENSOR
 
 config LV_Z_MEM_POOL_SIZE
     default 20000

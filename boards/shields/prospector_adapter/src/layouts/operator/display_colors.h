@@ -35,3 +35,11 @@
 #define DISPLAY_COLOR_SLOT_ACTIVE_BG   0x7b7d93
 #define DISPLAY_COLOR_SLOT_INACTIVE_BG 0x353640
 #define DISPLAY_COLOR_SLOT_TEXT        0xffffff
+
+/* Air quality meter — IAQ arc severity colors */
+#define DISPLAY_COLOR_IAQ_GOOD     0x54c45e   /* green:  0–50   */
+#define DISPLAY_COLOR_IAQ_MODERATE 0xd4c050   /* yellow: 51–100 */
+#define DISPLAY_COLOR_IAQ_POOR     0xc87830   /* orange: 101–200 */
+#define DISPLAY_COLOR_IAQ_BAD      0xc2526a   /* red:    >200   */
+#define DISPLAY_COLOR_IAQ_BG       0x242424   /* arc background ring (same as WPM inactive) */
+#define DISPLAY_COLOR_IAQ_TEXT     0xffffff   /* sensor value labels */

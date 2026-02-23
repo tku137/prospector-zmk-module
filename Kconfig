@@ -119,3 +119,12 @@ config PROSPECTOR_BRIGHTNESS_STEP
     depends on PROSPECTOR_BRIGHTNESS_KEYBOARD_CONTROL
     help
       How much to increase or decrease brightness per keypress, in percent.
+
+config PROSPECTOR_ENV_SENSOR
+    bool "Enable environmental sensor widget (CCS811 + HTU21D)"
+    default n
+    depends on PROSPECTOR_STATUS_SCREEN_OPERATOR
+    help
+      When enabled, replaces the WPM meter in the operator layout with an
+      air quality widget driven by a CCS811 eCO2/TVOC sensor and an HTU21D
+      temperature/humidity sensor. Both sensors must be wired to the i2c1 bus.

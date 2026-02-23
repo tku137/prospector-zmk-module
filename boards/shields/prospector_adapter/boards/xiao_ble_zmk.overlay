@@ -99,6 +99,19 @@ disp_spi: &spi3 {
        reg = <0x39>;
        int-gpios = <&xiao_d 2 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
    };
+
+   htu21d: htu21d@40 {
+       compatible = "meas,htu21d";
+       status = "okay";
+       reg = <0x40>;
+   };
+
+   ccs811: ccs811@5a {
+       compatible = "ams,ccs811";
+       status = "okay";
+       reg = <0x5a>;
+       wake-gpios = <&xiao_d 6 GPIO_ACTIVE_LOW>;
+   };
 };
 
 &pwm1 {
