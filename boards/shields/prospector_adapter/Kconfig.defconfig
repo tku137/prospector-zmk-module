@@ -61,7 +61,7 @@ config PROSPECTOR_USE_AMBIENT_LIGHT_SENSOR
 
 config PROSPECTOR_ENV_SENSOR
     select SENSOR
-    select CCS811
-    select SI7006
+    imply CCS811
+    imply SI7006
 
 endif
