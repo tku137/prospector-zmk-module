@@ -100,11 +100,11 @@ disp_spi: &spi3 {
        int-gpios = <&xiao_d 2 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
    };
 
-   htu21d: htu21d@40 {
-       compatible = "meas,htu21d";
-       status = "okay";
-       reg = <0x40>;
-   };
+    htu21d: htu21d@40 {
+        compatible = "sensirion,sht21";
+        status = "okay";
+        reg = <0x40>;
+    };
 
    ccs811: ccs811@5a {
        compatible = "ams,ccs811";
