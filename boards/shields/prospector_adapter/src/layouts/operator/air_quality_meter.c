@@ -2,9 +2,12 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
+#include <ctype.h>
 #include <zmk/display.h>
 #include <zmk/event_manager.h>
 #include <zmk/events/env_sensor_data_changed.h>
+#include <zmk/events/layer_state_changed.h>
+#include <zmk/keymap.h>
 
 #include <lvgl.h>
 #include <fonts.h>
@@ -14,23 +17,34 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 /* -------------------------------------------------------------------------
  * Widget dimensions
  * -------------------------------------------------------------------------
- * Container:   260 × 90 px   (same bounding box as wpm_meter)
- * Arc:          80 × 80 px   full 360° ring, arc_width = 6
- *   arc x = (260 - 80) / 2 = 90
- *   arc y = (90  - 80) / 2 = 5
- * IAQ label centered inside arc:
- *   FR_Medium_32 is ~32px tall; center_x = ARC_X + ARC_SIZE/2 = 130
+ * Container:   260 × 100 px
+ *
+ * Arc:          80 ×  80 px, full 360° ring, arc_width = 6
+ *   arc x = 90  (left-side labels ~85px wide, arc starts just right of them)
+ *   arc y = 10  ((100 - 80) / 2)
+ *
+ * Left column (x=0):
+ *   Temp  — top-left,    FG_Medium_21
+ *   Hum   — bottom-left, FG_Medium_21
+ *
+ * Arc center label:
+ *   "IAQ" static text, FG_Medium_21, centered inside arc
+ *
+ * Right column (x=177, just right of arc at 90+80=170 + 7px gap):
+ *   CO2   — y=0,  one line "CO2: XXXXX",  FG_Medium_21
+ *   TVOC  — y=28, one line "TVOC: XXXXX", FG_Medium_21
+ *
+ * Layer name — overflows bottom-right, identical to wpm_meter styling
  * -------------------------------------------------------------------------
  */
-#define WIDGET_W    260
-#define WIDGET_H     90
-#define ARC_SIZE     80
-#define ARC_WIDTH     6
-#define ARC_X        90   /* (260 - 80) / 2 */
-#define ARC_Y         5   /* (90  - 80) / 2  */
-
-/* IAQ score → arc value mapping: arc range 0–500 */
-#define IAQ_MAX     500
+#define WIDGET_W      260
+#define WIDGET_H      100
+#define ARC_SIZE       80
+#define ARC_WIDTH       6
+#define ARC_X          90
+#define ARC_Y          10   /* (100 - 80) / 2 */
+#define RIGHT_COL_X   177   /* ARC_X + ARC_SIZE + 7 */
+#define IAQ_MAX       500
 
 /* -------------------------------------------------------------------------
  * IAQ severity color lookup
@@ -50,7 +64,7 @@ static lv_color_t iaq_color(uint16_t score)
 }
 
 /* -------------------------------------------------------------------------
- * Widget state struct (passed through ZMK_DISPLAY_WIDGET_LISTENER)
+ * Widget state structs
  * -------------------------------------------------------------------------
  */
 struct widget_state {
@@ -61,10 +75,14 @@ struct widget_state {
     uint16_t iaq_score;
 };
 
+struct layer_state {
+    uint8_t index;
+};
+
 static sys_slist_t widgets = SYS_SLIST_STATIC_INIT(&widgets);
 
 /* -------------------------------------------------------------------------
- * LVGL update callback — iterates all widget instances
+ * LVGL update callback — sensor data
  * -------------------------------------------------------------------------
  */
 static void update_cb(struct widget_state state)
@@ -72,31 +90,24 @@ static void update_cb(struct widget_state state)
     struct zmk_widget_air_quality_meter *widget;
 
     SYS_SLIST_FOR_EACH_CONTAINER(&widgets, widget, node) {
-        /* Arc value & indicator color */
-        lv_arc_set_value(widget->arc, state.iaq_score);
+        /* Arc indicator color */
         lv_obj_set_style_arc_color(widget->arc, iaq_color(state.iaq_score),
                                    LV_PART_INDICATOR);
 
-        /* IAQ center label */
-        lv_label_set_text_fmt(widget->iaq_label, "%u", state.iaq_score);
+        /* CO2 label: single line, "CO2: XXXXX" */
+        lv_label_set_text_fmt(widget->co2_label, "CO2: %u", state.co2_ppm);
 
-        /* CO2 label: two-line, top-left */
-        lv_label_set_text_fmt(widget->co2_label, "CO2\n%uppm", state.co2_ppm);
+        /* TVOC label: single line, "TVOC: XXXXX" */
+        lv_label_set_text_fmt(widget->tvoc_label, "TVOC: %u", state.tvoc_ppb);
 
-        /* TVOC label: two-line, top-right */
-        lv_label_set_text_fmt(widget->tvoc_label, "TVOC\n%uppb", state.tvoc_ppb);
-
-        /* Temperature label: single line, bottom-left
-         * temp_mdeg is millidegrees C; extract whole + first decimal digit */
+        /* Temperature: "24.1C" — no degree glyph, not in font */
         int16_t temp_whole = state.temp_mdeg / 1000;
         uint16_t temp_frac = (uint16_t)((state.temp_mdeg < 0
                                          ? -state.temp_mdeg
                                          :  state.temp_mdeg) % 1000 / 100);
-        lv_label_set_text_fmt(widget->temp_label, "%d.%u\xc2\xb0" "C",
-                              temp_whole, temp_frac);
+        lv_label_set_text_fmt(widget->temp_label, "%d.%uC", temp_whole, temp_frac);
 
-        /* Humidity label: single line, bottom-right
-         * humidity_mpct is milli-percent */
+        /* Humidity: "47.3%" */
         uint16_t hum_whole = state.humidity_mpct / 1000;
         uint16_t hum_frac  = state.humidity_mpct % 1000 / 100;
         lv_label_set_text_fmt(widget->hum_label, "%u.%u%%", hum_whole, hum_frac);
@@ -104,7 +115,36 @@ static void update_cb(struct widget_state state)
 }
 
 /* -------------------------------------------------------------------------
- * Extract state from ZMK event
+ * LVGL update callback — layer name
+ * -------------------------------------------------------------------------
+ */
+static void layer_update_cb(struct layer_state state)
+{
+    struct zmk_widget_air_quality_meter *widget;
+
+    SYS_SLIST_FOR_EACH_CONTAINER(&widgets, widget, node) {
+        const char *layer_name =
+            zmk_keymap_layer_name(zmk_keymap_layer_index_to_id(state.index));
+        char display_name[32];
+
+        if (layer_name && *layer_name) {
+            snprintf(display_name, sizeof(display_name), "%s", layer_name);
+        } else {
+            snprintf(display_name, sizeof(display_name), "Layer %d", state.index);
+        }
+
+#if IS_ENABLED(CONFIG_PROSPECTOR_LAYER_NAME_UPPERCASE)
+        for (int i = 0; display_name[i]; i++) {
+            display_name[i] = toupper((unsigned char)display_name[i]);
+        }
+#endif
+
+        lv_label_set_text(widget->layer_label, display_name);
+    }
+}
+
+/* -------------------------------------------------------------------------
+ * Extract state from ZMK events
  * -------------------------------------------------------------------------
  */
 static struct widget_state get_state(const zmk_event_t *eh)
@@ -120,9 +160,20 @@ static struct widget_state get_state(const zmk_event_t *eh)
     };
 }
 
+static struct layer_state layer_get_state(const zmk_event_t *eh)
+{
+    return (struct layer_state){
+        .index = zmk_keymap_highest_layer_active(),
+    };
+}
+
 ZMK_DISPLAY_WIDGET_LISTENER(widget_air_quality_meter, struct widget_state,
                              update_cb, get_state)
 ZMK_SUBSCRIPTION(widget_air_quality_meter, zmk_env_sensor_data_changed);
+
+ZMK_DISPLAY_WIDGET_LISTENER(widget_air_quality_meter_layer, struct layer_state,
+                             layer_update_cb, layer_get_state)
+ZMK_SUBSCRIPTION(widget_air_quality_meter_layer, zmk_layer_state_changed);
 
 /* -------------------------------------------------------------------------
  * Public init
@@ -161,56 +212,71 @@ int zmk_widget_air_quality_meter_init(struct zmk_widget_air_quality_meter *widge
     lv_obj_clear_flag(widget->arc, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_set_style_bg_opa(widget->arc, LV_OPA_TRANSP, LV_PART_MAIN);
 
-    /* --- IAQ score label (centered inside arc using absolute position)
-     *     Arc center: x = ARC_X + ARC_SIZE/2 = 130, y = ARC_Y + ARC_SIZE/2 = 45
-     *     Use LV_ALIGN_CENTER relative to arc object --- */
+    /* --- "IAQ" static label centered inside arc --- */
     widget->iaq_label = lv_label_create(widget->obj);
-    lv_obj_set_style_text_font(widget->iaq_label, &FR_Medium_32, LV_PART_MAIN);
+    lv_obj_set_style_text_font(widget->iaq_label, &FG_Medium_21, LV_PART_MAIN);
     lv_obj_set_style_text_color(widget->iaq_label,
                                 lv_color_hex(DISPLAY_COLOR_IAQ_TEXT),
                                 LV_PART_MAIN);
-    lv_label_set_text(widget->iaq_label, "---");
+    lv_label_set_text(widget->iaq_label, "IAQ");
     lv_obj_align_to(widget->iaq_label, widget->arc, LV_ALIGN_CENTER, 0, 0);
 
-    /* --- CO2 label: top-left corner of container --- */
-    widget->co2_label = lv_label_create(widget->obj);
-    lv_obj_set_style_text_font(widget->co2_label, &FG_Medium_20, LV_PART_MAIN);
-    lv_obj_set_style_text_color(widget->co2_label,
-                                lv_color_hex(DISPLAY_COLOR_IAQ_TEXT),
-                                LV_PART_MAIN);
-    lv_label_set_text(widget->co2_label, "CO2\n---ppm");
-    lv_obj_align(widget->co2_label, LV_ALIGN_TOP_LEFT, 0, 0);
-
-    /* --- TVOC label: top-right corner --- */
-    widget->tvoc_label = lv_label_create(widget->obj);
-    lv_obj_set_style_text_font(widget->tvoc_label, &FG_Medium_20, LV_PART_MAIN);
-    lv_obj_set_style_text_color(widget->tvoc_label,
-                                lv_color_hex(DISPLAY_COLOR_IAQ_TEXT),
-                                LV_PART_MAIN);
-    lv_label_set_text(widget->tvoc_label, "TVOC\n---ppb");
-    lv_obj_align(widget->tvoc_label, LV_ALIGN_TOP_RIGHT, 0, 0);
-
-    /* --- Temperature label: bottom-left corner --- */
+    /* --- Temperature label: top-left --- */
     widget->temp_label = lv_label_create(widget->obj);
-    lv_obj_set_style_text_font(widget->temp_label, &FG_Medium_20, LV_PART_MAIN);
+    lv_obj_set_style_text_font(widget->temp_label, &FG_Medium_21, LV_PART_MAIN);
     lv_obj_set_style_text_color(widget->temp_label,
                                 lv_color_hex(DISPLAY_COLOR_IAQ_TEXT),
                                 LV_PART_MAIN);
-    lv_label_set_text(widget->temp_label, "--.-\xc2\xb0" "C");
-    lv_obj_align(widget->temp_label, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+    lv_label_set_text(widget->temp_label, "--.--C");
+    lv_obj_align(widget->temp_label, LV_ALIGN_TOP_LEFT, 0, 0);
 
-    /* --- Humidity label: bottom-right corner --- */
+    /* --- Humidity label: bottom-left --- */
     widget->hum_label = lv_label_create(widget->obj);
-    lv_obj_set_style_text_font(widget->hum_label, &FG_Medium_20, LV_PART_MAIN);
+    lv_obj_set_style_text_font(widget->hum_label, &FG_Medium_21, LV_PART_MAIN);
     lv_obj_set_style_text_color(widget->hum_label,
                                 lv_color_hex(DISPLAY_COLOR_IAQ_TEXT),
                                 LV_PART_MAIN);
     lv_label_set_text(widget->hum_label, "--.-%%");
-    lv_obj_align(widget->hum_label, LV_ALIGN_BOTTOM_RIGHT, 0, 0);
+    lv_obj_align(widget->hum_label, LV_ALIGN_BOTTOM_LEFT, 0, 0);
 
-    /* Register and start listener */
+    /* --- CO2 label: top-right column, single line --- */
+    widget->co2_label = lv_label_create(widget->obj);
+    lv_obj_set_style_text_font(widget->co2_label, &FG_Medium_21, LV_PART_MAIN);
+    lv_obj_set_style_text_color(widget->co2_label,
+                                lv_color_hex(DISPLAY_COLOR_IAQ_TEXT),
+                                LV_PART_MAIN);
+    lv_label_set_text(widget->co2_label, "CO2: ---");
+    lv_obj_set_pos(widget->co2_label, RIGHT_COL_X, 0);
+
+    /* --- TVOC label: below CO2, single line --- */
+    widget->tvoc_label = lv_label_create(widget->obj);
+    lv_obj_set_style_text_font(widget->tvoc_label, &FG_Medium_21, LV_PART_MAIN);
+    lv_obj_set_style_text_color(widget->tvoc_label,
+                                lv_color_hex(DISPLAY_COLOR_IAQ_TEXT),
+                                LV_PART_MAIN);
+    lv_label_set_text(widget->tvoc_label, "TVOC: ---");
+    lv_obj_set_pos(widget->tvoc_label, RIGHT_COL_X, 28);
+
+    /* --- Layer name label: overflows bottom-right, identical to wpm_meter --- */
+    widget->layer_label = lv_label_create(widget->obj);
+    lv_label_set_text(widget->layer_label, "");
+    lv_obj_set_style_text_font(widget->layer_label,
+                               &DINishExpanded_Light_36, LV_PART_MAIN);
+    lv_obj_set_style_text_color(widget->layer_label,
+                                lv_color_hex(DISPLAY_COLOR_LAYER_TEXT),
+                                LV_PART_MAIN);
+    lv_obj_set_style_bg_color(widget->layer_label,
+                              lv_color_hex(0x000000), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(widget->layer_label, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_pad_hor(widget->layer_label, 8, LV_PART_MAIN);
+    lv_obj_set_style_pad_top(widget->layer_label, 7, LV_PART_MAIN);
+    lv_obj_set_style_pad_bottom(widget->layer_label, 3, LV_PART_MAIN);
+    lv_obj_align(widget->layer_label, LV_ALIGN_BOTTOM_RIGHT, 9, 7);
+
+    /* Register and start listeners */
     sys_slist_append(&widgets, &widget->node);
     widget_air_quality_meter_init();
+    widget_air_quality_meter_layer_init();
 
     return 0;
 }

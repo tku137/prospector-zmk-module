@@ -12,6 +12,7 @@ struct zmk_widget_air_quality_meter {
     lv_obj_t   *tvoc_label;
     lv_obj_t   *temp_label;
     lv_obj_t   *hum_label;
+    lv_obj_t   *layer_label;
 };
 
 int       zmk_widget_air_quality_meter_init(struct zmk_widget_air_quality_meter *widget,
