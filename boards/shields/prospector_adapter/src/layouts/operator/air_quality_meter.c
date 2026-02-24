@@ -20,7 +20,7 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
  * Container:   260 × 100 px
  *
  * Arc:          80 ×  80 px, full 360° ring, arc_width = 6
- *   arc x = 90  (left-side labels ~85px wide, arc starts just right of them)
+ *   arc x = 45  (left of center; left col labels ~45px wide)
  *   arc y = 10  ((100 - 80) / 2)
  *
  * Left column (x=0):
@@ -30,7 +30,7 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
  * Arc center label:
  *   "IAQ" static text, FG_Medium_21, centered inside arc
  *
- * Right column (x=177, just right of arc at 90+80=170 + 7px gap):
+ * Right column (x=133, arc right edge 45+80=125 + 8px gap):
  *   CO2   — y=0,  one line "CO2: XXXXX",  FG_Medium_21
  *   TVOC  — y=28, one line "TVOC: XXXXX", FG_Medium_21
  *
@@ -41,9 +41,9 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #define WIDGET_H      100
 #define ARC_SIZE       80
 #define ARC_WIDTH       6
-#define ARC_X          90
+#define ARC_X          45
 #define ARC_Y          10   /* (100 - 80) / 2 */
-#define RIGHT_COL_X   177   /* ARC_X + ARC_SIZE + 7 */
+#define RIGHT_COL_X   133   /* ARC_X + ARC_SIZE + 8 */
 #define IAQ_MAX       500
 
 /* -------------------------------------------------------------------------
