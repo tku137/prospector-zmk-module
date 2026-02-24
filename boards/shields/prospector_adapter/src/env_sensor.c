@@ -147,6 +147,24 @@ static void env_sensor_thread(void *d0, void *d1, void *d2)
         uint16_t hum_mpct = (uint16_t)(hum_val.val1 * 1000 +
                                        hum_val.val2 / 1000);
 
+        /* --- Sanity-check readings before publishing.
+         *
+         * The CCS811 outputs known sentinel values during warm-up /
+         * before its algorithm has converged:
+         *   CO2  = 1024 (0x0400) — algorithm not yet running
+         *   TVOC = 8192 (0x2000) — same condition
+         * Atmospheric CO2 is ~420 ppm at minimum; anything below 400 is
+         * also invalid.  The HTU21D outputs 0 %RH when it hasn't settled.
+         * Skip the event for any of these conditions.
+         */
+        if (co2_ppm < 400 || co2_ppm == 1024 || tvoc_ppb == 8192
+            || hum_mpct == 0) {
+            LOG_WRN("Skipping invalid sensor reading: CO2=%u TVOC=%u Hum=%u",
+                    co2_ppm, tvoc_ppb, hum_mpct);
+            k_msleep(SAMPLE_INTERVAL_MS);
+            continue;
+        }
+
         uint16_t iaq = compute_iaq(co2_ppm, tvoc_ppb);
 
         LOG_DBG("CO2=%uppm TVOC=%uppb Temp=%d.%03dC Hum=%u.%03d%% IAQ=%u",
