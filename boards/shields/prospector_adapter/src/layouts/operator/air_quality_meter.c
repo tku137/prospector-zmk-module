@@ -20,9 +20,9 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
  * Container:   260 × 100 px
  *
  * Arc:          80 ×  80 px, full 360° ring, arc_width = 6
- *   arc x = 58  (widget x=10, so screen x=68; arc right edge=138 in widget
- *               = screen x=148, aligning with output widget left edge)
- *   arc y = 10  ((100 - 80) / 2)
+ *   arc x = 55  (widget x=10, screen x=65; arc right edge=135 in widget
+ *               = screen x=145, aligns with output widget left edge x=148)
+ *   arc y =  5  ((90 - 80) / 2)
  *
  * Left column (x=0):
  *   Temp  — top-left,    FG_Medium_21
@@ -31,7 +31,7 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
  * Arc center label:
  *   "IAQ" static text, FG_Medium_21, centered inside arc
  *
- * Right column (x=146, arc right edge 138 + 8px gap):
+ * Right column (x=143, arc right edge 135 + 8px gap):
  *   CO2   — y=0,  one line "CO2: XXXXX",  FG_Medium_21
  *   TVOC  — y=28, one line "TVOC: XXXXX", FG_Medium_21
  *
@@ -39,12 +39,12 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
  * -------------------------------------------------------------------------
  */
 #define WIDGET_W      260
-#define WIDGET_H      100
+#define WIDGET_H       90
 #define ARC_SIZE       80
 #define ARC_WIDTH       6
-#define ARC_X          58
-#define ARC_Y          10   /* (100 - 80) / 2 */
-#define RIGHT_COL_X   146   /* ARC_X + ARC_SIZE + 8 */
+#define ARC_X          55
+#define ARC_Y           5   /* (90 - 80) / 2 */
+#define RIGHT_COL_X   143   /* ARC_X + ARC_SIZE + 8 */
 #define IAQ_MAX       500
 
 /* -------------------------------------------------------------------------
