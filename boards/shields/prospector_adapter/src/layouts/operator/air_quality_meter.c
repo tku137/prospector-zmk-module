@@ -217,7 +217,7 @@ int zmk_widget_air_quality_meter_init(struct zmk_widget_air_quality_meter *widge
     widget->iaq_label = lv_label_create(widget->obj);
     lv_obj_set_style_text_font(widget->iaq_label, &FG_Medium_21, LV_PART_MAIN);
     lv_obj_set_style_text_color(widget->iaq_label,
-                                lv_color_hex(DISPLAY_COLOR_IAQ_TEXT),
+                                lv_color_hex(DISPLAY_COLOR_IAQ_LABEL),
                                 LV_PART_MAIN);
     lv_label_set_text(widget->iaq_label, "IAQ");
     lv_obj_align_to(widget->iaq_label, widget->arc, LV_ALIGN_CENTER, 0, 0);
@@ -226,36 +226,36 @@ int zmk_widget_air_quality_meter_init(struct zmk_widget_air_quality_meter *widge
     widget->temp_label = lv_label_create(widget->obj);
     lv_obj_set_style_text_font(widget->temp_label, &FG_Medium_21, LV_PART_MAIN);
     lv_obj_set_style_text_color(widget->temp_label,
-                                lv_color_hex(DISPLAY_COLOR_IAQ_TEXT),
+                                lv_color_hex(DISPLAY_COLOR_IAQ_LABEL),
                                 LV_PART_MAIN);
-    lv_label_set_text(widget->temp_label, "--.--C");
+    lv_label_set_text(widget->temp_label, "-C");
     lv_obj_align(widget->temp_label, LV_ALIGN_TOP_LEFT, 0, 0);
 
     /* --- Humidity label: bottom-left --- */
     widget->hum_label = lv_label_create(widget->obj);
     lv_obj_set_style_text_font(widget->hum_label, &FG_Medium_21, LV_PART_MAIN);
     lv_obj_set_style_text_color(widget->hum_label,
-                                lv_color_hex(DISPLAY_COLOR_IAQ_TEXT),
+                                lv_color_hex(DISPLAY_COLOR_IAQ_LABEL),
                                 LV_PART_MAIN);
-    lv_label_set_text(widget->hum_label, "--.-%%");
+    lv_label_set_text(widget->hum_label, "-%");
     lv_obj_align(widget->hum_label, LV_ALIGN_BOTTOM_LEFT, 0, 0);
 
     /* --- CO2 label: top-right column, single line --- */
     widget->co2_label = lv_label_create(widget->obj);
     lv_obj_set_style_text_font(widget->co2_label, &FG_Medium_21, LV_PART_MAIN);
     lv_obj_set_style_text_color(widget->co2_label,
-                                lv_color_hex(DISPLAY_COLOR_IAQ_TEXT),
+                                lv_color_hex(DISPLAY_COLOR_IAQ_LABEL),
                                 LV_PART_MAIN);
-    lv_label_set_text(widget->co2_label, "CO2: ---");
+    lv_label_set_text(widget->co2_label, "CO2: -");
     lv_obj_set_pos(widget->co2_label, RIGHT_COL_X, 0);
 
     /* --- TVOC label: below CO2, single line --- */
     widget->tvoc_label = lv_label_create(widget->obj);
     lv_obj_set_style_text_font(widget->tvoc_label, &FG_Medium_21, LV_PART_MAIN);
     lv_obj_set_style_text_color(widget->tvoc_label,
-                                lv_color_hex(DISPLAY_COLOR_IAQ_TEXT),
+                                lv_color_hex(DISPLAY_COLOR_IAQ_LABEL),
                                 LV_PART_MAIN);
-    lv_label_set_text(widget->tvoc_label, "TVOC: ---");
+    lv_label_set_text(widget->tvoc_label, "TVOC: -");
     lv_obj_set_pos(widget->tvoc_label, RIGHT_COL_X, 28);
 
     /* --- Layer name label: overflows bottom-right, identical to wpm_meter --- */
